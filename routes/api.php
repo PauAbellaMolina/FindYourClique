@@ -22,4 +22,4 @@ Route::get('/activity', 'BotController@updatedActivity');
 
 Route::get('/setwebhook', 'BotController@setWebhook');
 
-Route::post('/test', 'BotController@handleRequest');
+Route::post('/webhook', 'BotController@handleRequest');
