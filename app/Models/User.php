@@ -17,9 +17,23 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
+        'chat_id',
+        'first_name',
+        'last_name',
+        'spotify_api_token',
+        'interests_set',
+        'interest_code_1',
+        'interest_name_1',
+        'interest_code_2',
+        'interest_name_2',
+        'interest_code_3',
+        'interest_name_3',
+        'interest_code_4',
+        'interest_name_4',
+        'interest_code_5',
+        'interest_name_5',
+        'created_at',
+        'updated_at'
     ];
 
     /**
@@ -28,8 +42,6 @@ class User extends Authenticatable
      * @var array
      */
     protected $hidden = [
-        'password',
-        'remember_token',
     ];
 
     /**
@@ -38,6 +50,5 @@ class User extends Authenticatable
      * @var array
      */
     protected $casts = [
-        'email_verified_at' => 'datetime',
     ];
 }

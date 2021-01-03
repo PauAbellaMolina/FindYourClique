@@ -20,6 +20,9 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 
 Route::get('/activity', 'BotController@updatedActivity');
 
+Route::get('/interests', 'BotController@interestsDebug');
+
 Route::get('/setwebhook', 'BotController@setWebhook');
+Route::get('/removewebhook', 'BotController@removeWebhook');
 
 Route::post('/webhook', 'BotController@handleRequest');
