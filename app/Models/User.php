@@ -18,6 +18,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'chat_id',
+        'username',
         'first_name',
         'last_name',
         'spotify_api_token',

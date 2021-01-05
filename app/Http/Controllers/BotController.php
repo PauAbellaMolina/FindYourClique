@@ -13,6 +13,7 @@ class BotController extends Controller
 {
     protected $telegram;
     protected $chat_id;
+    protected $username;
     protected $first_name;
     protected $last_name;
     protected $text;
@@ -28,15 +29,25 @@ class BotController extends Controller
         }
 
         $this->chat_id = $request['message']['chat']['id'];
-        //Add the same below but for the username (which btw is brother of first_name and last_name if set). If user has no usename, make them add one before being able to do anything else
-        //Also add the username field onto the db and the user model and all this stuff
         isset($request['message']['chat']['first_name']) ?  $this->first_name = $request['message']['chat']['first_name'] : $this->first_name = "";
         isset($request['message']['chat']['last_name']) ? $this->last_name = $request['message']['chat']['last_name'] : $this->last_name = "";
         $this->text = $request['message']['text'];
-        try{
-            $user = User::where('chat_id', '=', $this->chat_id)->get();
-            $this->spotifyToken = $user[0]['spotify_api_token'];
-        } catch(\Exception $e) {
+
+        //Username control check
+        if(!isset($request['message']['chat']['username'])) {
+            $this->sendMessage("You need to have a <i><strong>username</strong></i> to use FindYourClique.\nCome back once you set one on your Telegram profile!", null, true);
+            return;
+        }
+
+        $this->username = $request['message']['chat']['username'];
+
+        if($user = User::where('chat_id', '=', $this->chat_id)->get() == "[]") {
+        } else {
+            try{
+                $user = User::where('chat_id', '=', $this->chat_id)->get();
+                $this->spotifyToken = $user[0]['spotify_api_token'];
+            } catch(\Exception $e) {
+            }
         }
 
         $instruction = explode(' ',$this->text);
@@ -47,6 +58,9 @@ class BotController extends Controller
             case'/start':
                 $this->start();
                 break;
+            case'/delete':
+                $this->delete();
+                break;
             case'Next':
                 $this->next();
                 break;
@@ -54,8 +68,23 @@ class BotController extends Controller
                 $this->spotifyToken = count($instruction)>1 ? $instruction[1] : "";
                 $this->setToken();
                 break;
-            case'MyInterests':
+            case'Interests':
                 $this->interests();
+                break;
+            case'1':
+                $this->findMutualInterest1();
+                break;
+            case'2':
+                $this->findMutualInterest2();
+                break;
+            case'3':
+                $this->findMutualInterest3();
+                break;
+            case'4':
+                $this->findMutualInterest4();
+                break;
+            case'5':
+                $this->findMutualInterest5();
                 break;
             case'/tkn':
                 $this->tkn();
@@ -89,6 +118,23 @@ class BotController extends Controller
         $this->sendMessage($message, $reply_markup, true);
     }
 
+    //Method for the "/delete" input
+    public function delete() {
+        try {
+            $user = User::where('chat_id', '=', $this->chat_id)->delete();
+
+            $message = "";
+            $message .= "<strong>Done, your user has been deleted!</strong>\n";
+
+            $this->sendMessage($message, null, true);
+        } catch(\Exception $e) {
+            $message = "";
+            $message .= "<strong>Something went wrong...1</strong>\n";
+
+            $this->sendMessage($message, null, true);
+        }
+    }
+
     //Method for the "Next" input
     public function next() {
         $message = "";
@@ -118,6 +164,7 @@ class BotController extends Controller
             //Create new user
             $user = new User;
             $user->chat_id = $this->chat_id;
+            $user->username = $this->username;
             $user->first_name = $this->first_name;
             $user->last_name = $this->last_name;
             $user->spotify_api_token = $this->spotifyToken;
@@ -130,10 +177,10 @@ class BotController extends Controller
             $message .= "<strong>Alright, token set!</strong>\n";
             $message .= "This is your token:\n";
             $message .= "<code>".$this->spotifyToken."</code>\n";
-            $message .= "Click on <i><strong>MyInterests</strong></i> to find out your interests and save them to your profile.\n";
+            $message .= "Click on <i><strong>Interests</strong></i> to find out your interests and save them to your profile.\n";
 
             $keyboard = [
-                ['MyInterests']
+                ['Interests']
             ];
 
             $reply_markup = Keyboard::make([
@@ -160,7 +207,7 @@ class BotController extends Controller
 
         if(isset($response->items)) {
             $message = "";
-            $message .= "I've been stalking you and it seems you've been recently liking these artists:\n";
+            $message .= "These are your interests:\n";
             $message .= "- ".$response->items[0]->name."\n";
             $message .= "- ".$response->items[1]->name."\n";
             $message .= "- ".$response->items[2]->name."\n";
@@ -189,6 +236,8 @@ class BotController extends Controller
                     $message .= "<strong>Something went wrong while I was trying to remember your interests...</strong>\n";
                     $this->sendMessage($message, null, true);
                 }
+            } else {
+                $this->sendMessage($message, null, true);
             }
         } else {
             $message = "";
@@ -212,6 +261,91 @@ class BotController extends Controller
         }
     }
 
+    //Method for the "FindMutual" input
+    public function findMutualInterest1() {
+        if($user = User::where('chat_id', '=', $this->chat_id)->get() == "[]") {
+            return;
+        }
+        $user = User::where('chat_id', '=', $this->chat_id)->get()[0];
+        $mutuals = User::where('chat_id', '!=', $user->chat_id)->where('interest_code_1', '=', $user->interest_code_1)->get();
+
+        $message = "";
+
+        if($mutuals == "[]") {
+            $message .= "We couldn't find anyone who also likes";
+        } else {
+            $message .= "<strong>Found them!</strong> Users who also like <strong>".$user->interest_name_1."</strong>\n";
+            foreach ($mutuals as $mutual) {
+                $message .= "- @".$mutual->username."\n";
+            }
+        }
+        $this->sendMessage($message, null, true);
+    }
+    public function findMutualInterest2() {
+        $user = User::where('chat_id', '=', $this->chat_id)->get()[0];
+        $mutuals = User::where('chat_id', '!=', $user->chat_id)->where('interest_code_2', '=', $user->interest_code_2)->get();
+
+        $message = "";
+
+        if($mutuals == "[]") {
+            $message .= "We couldn't find anyone who also likes";
+        } else {
+            $message .= "<strong>Found them!</strong> Users who also like <strong>".$user->interest_name_2."</strong>\n";
+            foreach ($mutuals as $mutual) {
+                $message .= "- @".$mutual->username."\n";
+            }
+        }
+        $this->sendMessage($message, null, true);
+    }
+    public function findMutualInterest3() {
+        $user = User::where('chat_id', '=', $this->chat_id)->get()[0];
+        $mutuals = User::where('chat_id', '!=', $user->chat_id)->where('interest_code_3', '=', $user->interest_code_3)->get();
+
+        $message = "";
+
+        if($mutuals == "[]") {
+            $message .= "We couldn't find anyone who also likes";
+        } else {
+            $message .= "<strong>Found them!</strong> Users who also like <strong>".$user->interest_name_3."</strong>\n";
+            foreach ($mutuals as $mutual) {
+                $message .= "- @".$mutual->username."\n";
+            }
+        }
+        $this->sendMessage($message, null, true);
+    }
+    public function findMutualInterest4() {
+        $user = User::where('chat_id', '=', $this->chat_id)->get()[0];
+        $mutuals = User::where('chat_id', '!=', $user->chat_id)->where('interest_code_4', '=', $user->interest_code_4)->get();
+
+        $message = "";
+
+        if($mutuals == "[]") {
+            $message .= "We couldn't find anyone who also likes";
+        } else {
+            $message .= "<strong>Found them!</strong> Users who also like <strong>".$user->interest_name_4."</strong>\n";
+            foreach ($mutuals as $mutual) {
+                $message .= "- @".$mutual->username."\n";
+            }
+        }
+        $this->sendMessage($message, null, true);
+    }
+    public function findMutualInterest5() {
+        $user = User::where('chat_id', '=', $this->chat_id)->get()[0];
+        $mutuals = User::where('chat_id', '!=', $user->chat_id)->where('interest_code_5', '=', $user->interest_code_5)->get();
+
+        $message = "";
+
+        if($mutuals == "[]") {
+            $message .= "We couldn't find anyone who also likes";
+        } else {
+            $message .= "<strong>Found them!</strong> Users who also like <strong>".$user->interest_name_5."</strong>\n";
+            foreach ($mutuals as $mutual) {
+                $message .= "- @".$mutual->username."\n";
+            }
+        }
+        $this->sendMessage($message, null, true);
+    }
+
   //--------------------------------------------------------------------------//
  //-------------------------------Static Stuff------------------------------//
 //------------------------------------------------------------------------//
@@ -219,12 +353,10 @@ class BotController extends Controller
 
     //Method for the "Interests" input
     public function interestsDebug() {
-        $response = Http::withToken('BQA_SeZd7dJyt5hzMWU0W4zQ-PJNJwYGGmDtiUuV1pu7blo2AJI687uJLF5kvM1F4aVMqzIoDQrnaDiucUMxTiQZ57SCgtvHQYGmyck9wR3ay6h7D12MN9Aw_N6Y1qzjpZCXAw9sfuXyCA')
-        ->get('https://api.spotify.com/v1/me/top/artists?time_range=short_term&limit=5');
+        $user = User::where('chat_id', '=', '450828960')->get()[0];
+        $mutual = User::where('chat_id', '!=', '450828960')->where('interest_code_2', '=', $user->interest_code_2)->get();
 
-        $interests = json_decode($response);
-
-        dd($interests);
+        dd($mutual);
     }
 
 
@@ -253,7 +385,7 @@ class BotController extends Controller
     }
 
     public function setWebhook() {
-        $response = Telegram::setWebhook(['url' => 'https://aaea0953e0a4.ngrok.io/api/webhook']);
+        $response = Telegram::setWebhook(['url' => 'https://1d8d2c2f8e72.ngrok.io/api/webhook']);
         dd($response);
     }
 
