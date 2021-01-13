@@ -90,14 +90,11 @@ class BotController extends Controller
                 case'Interests':
                     $this->interests();
                     break;
+                case'🡸GoBack':
+                    $this->goBack();
+                    break;
                 case'Match':
                     $this->match();
-                    break;
-                case'100':
-                    $this->find100();
-                    break;
-                case'80':
-                    $this->find80();
                     break;
                 case $this->interest_name_1:
                     $this->findMutualInterest1();
@@ -123,6 +120,7 @@ class BotController extends Controller
         }
     }
 
+    //WIP groups
     public function handleRequestGroup(Request $request) {
         $this->chat_id = $request['message']['chat']['id'];
         isset($request['message']['from']['first_name']) ?  $this->first_name = $request['message']['from']['first_name'] : $this->first_name = "";
@@ -246,6 +244,26 @@ class BotController extends Controller
         }
     }
 
+    //Method for the "🡸GoBack" input
+    public function goBack() {
+        $message = "";
+        $message .= "Here you can access the bot features!\n";
+        $message .= "<strong>- Interests</strong> will tell you your interests and popup some buttons for you to find people you match with interest by interest!\n";
+        $message .= "<strong>- Match</strong> will give you all the users you matched with!\n";
+
+        $keyboard = [
+            ["Interests", "Match"]
+        ];
+
+        $reply_markup = Keyboard::make([
+            'keyboard' => $keyboard,
+            'resize_keyboard' => true,
+            'one_time_keyboard' => true
+        ]);
+
+        $this->sendMessage($message, $reply_markup, true);
+    }
+
     //Method for the "Interests" input
     public function interests() {
         $request = Http::withToken($this->spotifyToken)
@@ -262,11 +280,12 @@ class BotController extends Controller
             $message .= "- ".$response->items[3]->name."\n";
             $message .= "- ".$response->items[4]->name."\n";
 
-            $message .= "<strong>You can look for users matching your interests.</strong>\n";
+            // $message .= "<strong>You can look for users matching your interests.</strong>\n";
 
             $keyboard = [
                 [$this->interest_name_1, $this->interest_name_2],
-                [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5]
+                [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5],
+                ["🡸GoBack"]
             ];
 
             $reply_markup = Keyboard::make([
@@ -304,18 +323,21 @@ class BotController extends Controller
                     } catch(\Exception $e) {
                     }
 
-                    $keyboard = [
-                        [$this->interest_name_1, $this->interest_name_2],
-                        [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5]
-                    ];
+                    // $keyboard = [
+                    //     [$this->interest_name_1, $this->interest_name_2],
+                    //     [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5],
+                    //     ["🡸GoBack"]
+                    // ];
 
-                    $reply_markup = Keyboard::make([
-                        'keyboard' => $keyboard,
-                        'resize_keyboard' => true,
-                        'one_time_keyboard' => true
-                    ]);
+                    // $reply_markup = Keyboard::make([
+                    //     'keyboard' => $keyboard,
+                    //     'resize_keyboard' => true,
+                    //     'one_time_keyboard' => true
+                    // ]);
 
-                    $this->sendMessage($message, $reply_markup, true);
+                    $this->sendMessage($message, null, true);
+                    //Since its the first time user gets here, dont show the interests buttons, show the menu instead (aka calling the goBack function)
+                    $this->goBack();
                 } catch(\Exception $e) {
                     $message .= "<strong>Something went wrong while I was trying to remember your interests...</strong>\n";
                     $this->sendMessage($message, null, true);
@@ -350,35 +372,97 @@ class BotController extends Controller
 
         $find100 = $this->find100();
         $find80 = $this->find80();
+        $find60 = $this->find60();
 
+        //If not matched with anyone, which is sad, send a message and return
+        if($find100 == "[]" && $find80 == "[]" && $find60 == "[]") {
+            $message .= "We couldn't find anyone with at least a 60% match with you.\n";
+            $message .= "That's sad :(\n";
+            $message .= "<strong>You can still try to find people with your same interests in the <i>Interests</i> section!</strong>\n";
+
+            $keyboard = [
+                ["🡸GoBack"]
+            ];
+
+            $reply_markup = Keyboard::make([
+                'keyboard' => $keyboard,
+                'resize_keyboard' => true,
+                'one_time_keyboard' => true
+            ]);
+
+            $this->sendMessage($message, $reply_markup, true);
+            return;
+        }
+
+        //100% message construction
         if($find100 != "[]") {
             $message .= "<strong>Wow look, these users have your exact same interests!</strong>\n";
-            // $message .= $find100;
             foreach ($find100 as $mutual) {
                 $message .= "- @".$mutual->username."\n";
             }
         }
         $message .= "\n";
+
+        //80% message construction
+        if($find80 != "[]") {
+            foreach ($find80 as $key => $mutual) {
+                if(str_contains($message ,$mutual->username)) {
+                    unset($find80[$key]);
+                }
+            }
+        }
         if($find100 != "[]" && $find80 != "[]") {
             $message .= "<strong>You also really match (80%) with these people!</strong>\n";
-            // $message .= $find80;
             foreach ($find80 as $mutual) {
-                if(!str_contains($message ,$mutual->username)) {
-                    $message .= "- @".$mutual->username."\n";
-                }
+                $message .= "- @".$mutual->username."\n";
             }
         } else if($find100 == "[]" && $find80 != "[]") {
             $message .= "<strong>Found some users you highly match with (80%)!</strong>\n";
-            // $message .= $find80;
             foreach ($find80 as $mutual) {
                 $message .= "- @".$mutual->username."\n";
             }
         }
+        $message .= "\n";
 
-        $this->sendMessage($message, null, true);
+        //60% message construction
+        if($find60 != "[]") {
+            foreach ($find60 as $key => $mutual) {
+                if(str_contains($message ,$mutual->username)) {
+                    unset($find60[$key]);
+                }
+            }
+        }
+        if($find100 != "[]" && $find80 != "[]" && $find60 != "[]") {
+            $message .= "<strong>Finally you also match with these right here (60%)</strong>\n";
+            foreach ($find60 as $mutual) {
+                $message .= "- @".$mutual->username."\n";
+            }
+        } else if($find100 == "[]" && $find80 != "[]" && $find60 != "[]") {
+            $message .= "<strong>You also match (60%) with these people!</strong>\n";
+            foreach ($find60 as $mutual) {
+                $message .= "- @".$mutual->username."\n";
+            }
+        } else if($find100 == "[]" && $find80 == "[]" && $find60 != "[]") {
+            $message .= "<strong>Found some users you certainly match with (60%)!</strong>\n";
+            foreach ($find60 as $mutual) {
+                $message .= "- @".$mutual->username."\n";
+            }
+        }
+
+        $keyboard = [
+            ["🡸GoBack"]
+        ];
+
+        $reply_markup = Keyboard::make([
+            'keyboard' => $keyboard,
+            'resize_keyboard' => true,
+            'one_time_keyboard' => true
+        ]);
+
+        $this->sendMessage($message, $reply_markup, true);
     }
 
-    //Method for the "100" input
+    //Method for the 100% match
     public function find100() {
         if($user = User::where('chat_id', '=', $this->chat_id)->get() == "[]") {
             return;
@@ -423,24 +507,10 @@ class BotController extends Controller
             });
         })->get();
 
-        // return $mutuals;
-
-        $message = "";
-
-        // if($mutuals == "[]") {
-        //     // $message .= "We couldn't find anyone who also likes";
-        //     $message .= "";
-        // } else {
-        //     foreach ($mutuals as $mutual) {
-        //         $message .= "- @".$mutual->username."\n";
-        //     }
-        // }
-
         return $mutuals;
-        // $this->sendMessage($message, null, true);
     }
 
-    //Method for the "80" input
+    //Method for the 80% match
     public function find80() {
         if($user = User::where('chat_id', '=', $this->chat_id)->get() == "[]") {
             return;
@@ -613,21 +683,278 @@ class BotController extends Controller
         $mutuals = $mutuals->merge($aux4);
         $mutuals = $mutuals->merge($aux5);
 
-        // return $mutuals;
+        return $mutuals;
+    }
 
-        $message = "";
-
-        if($mutuals == "[]") {
-            // $message .= "We couldn't find anyone who also likes";
-            $message .= "";
-        } else {
-            foreach ($mutuals as $mutual) {
-                $message .= "- @".$mutual->username."\n";
-            }
+    //Method for the 60% match
+    public function find60() {
+        if($user = User::where('chat_id', '=', $this->chat_id)->get() == "[]") {
+            return;
         }
+        $user = User::where('chat_id', '=', $this->chat_id)->get()[0];
+        $aux1 = User::where('chat_id', '!=', $user->chat_id)
+        ->where(function($query) use ($user) {
+            $query->where(function($query) use ($user) {
+                $query->orWhere('interest_code_1', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_2', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_3', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_5);
+            });
+        })->get();
+
+        $aux2 = User::where('chat_id', '!=', $user->chat_id)
+        ->where(function($query) use ($user) {
+            $query->where(function($query) use ($user) {
+                $query->orWhere('interest_code_1', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_2', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_4', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_5);
+            });
+        })->get();
+
+        $aux3 = User::where('chat_id', '!=', $user->chat_id)
+        ->where(function($query) use ($user) {
+            $query->where(function($query) use ($user) {
+                $query->orWhere('interest_code_1', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_2', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_5', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_5);
+            });
+        })->get();
+
+        $aux4 = User::where('chat_id', '!=', $user->chat_id)
+        ->where(function($query) use ($user) {
+            $query->where(function($query) use ($user) {
+                $query->orWhere('interest_code_1', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_3', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_4', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_5);
+            });
+        })->get();
+
+        $aux5 = User::where('chat_id', '!=', $user->chat_id)
+        ->where(function($query) use ($user) {
+            $query->where(function($query) use ($user) {
+                $query->orWhere('interest_code_1', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_3', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_5', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_5);
+            });
+        })->get();
+
+        $aux6 = User::where('chat_id', '!=', $user->chat_id)
+        ->where(function($query) use ($user) {
+            $query->where(function($query) use ($user) {
+                $query->orWhere('interest_code_1', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_1', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_4', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_5', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_5);
+            });
+        })->get();
+
+        $aux7 = User::where('chat_id', '!=', $user->chat_id)
+        ->where(function($query) use ($user) {
+            $query->where(function($query) use ($user) {
+                $query->orWhere('interest_code_2', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_3', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_4', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_5);
+            });
+        })->get();
+
+        $aux8 = User::where('chat_id', '!=', $user->chat_id)
+        ->where(function($query) use ($user) {
+            $query->where(function($query) use ($user) {
+                $query->orWhere('interest_code_2', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_3', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_5', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_5);
+            });
+        })->get();
+
+        $aux9 = User::where('chat_id', '!=', $user->chat_id)
+        ->where(function($query) use ($user) {
+            $query->where(function($query) use ($user) {
+                $query->orWhere('interest_code_2', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_2', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_4', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_5', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_5);
+            });
+        })->get();
+
+        $aux10 = User::where('chat_id', '!=', $user->chat_id)
+        ->where(function($query) use ($user) {
+            $query->where(function($query) use ($user) {
+                $query->orWhere('interest_code_3', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_3', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_4', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_4', '=', $user->interest_code_5);
+            })
+            ->where(function($query) use ($user) {
+                $query->orWhere('interest_code_5', '=', $user->interest_code_1)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_2)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_3)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_4)
+                    ->orWhere('interest_code_5', '=', $user->interest_code_5);
+            });
+        })->get();
+
+        $mutuals = new \Illuminate\Database\Eloquent\Collection;
+        $mutuals = $mutuals->merge($aux1);
+        $mutuals = $mutuals->merge($aux2);
+        $mutuals = $mutuals->merge($aux3);
+        $mutuals = $mutuals->merge($aux4);
+        $mutuals = $mutuals->merge($aux5);
+        $mutuals = $mutuals->merge($aux6);
+        $mutuals = $mutuals->merge($aux7);
+        $mutuals = $mutuals->merge($aux8);
+        $mutuals = $mutuals->merge($aux9);
+        $mutuals = $mutuals->merge($aux10);
 
         return $mutuals;
-        // $this->sendMessage($message, null, true);
     }
 
     //Method for the "FindMutual" input
@@ -660,7 +987,8 @@ class BotController extends Controller
 
         $keyboard = [
             [$this->interest_name_1, $this->interest_name_2],
-            [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5]
+            [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5],
+            ["🡸GoBack"]
         ];
 
         $reply_markup = Keyboard::make([
@@ -700,7 +1028,8 @@ class BotController extends Controller
 
         $keyboard = [
             [$this->interest_name_1, $this->interest_name_2],
-            [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5]
+            [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5],
+            ["🡸GoBack"]
         ];
 
         $reply_markup = Keyboard::make([
@@ -740,7 +1069,8 @@ class BotController extends Controller
 
         $keyboard = [
             [$this->interest_name_1, $this->interest_name_2],
-            [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5]
+            [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5],
+            ["🡸GoBack"]
         ];
 
         $reply_markup = Keyboard::make([
@@ -780,7 +1110,8 @@ class BotController extends Controller
 
         $keyboard = [
             [$this->interest_name_1, $this->interest_name_2],
-            [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5]
+            [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5],
+            ["🡸GoBack"]
         ];
 
         $reply_markup = Keyboard::make([
@@ -820,7 +1151,8 @@ class BotController extends Controller
 
         $keyboard = [
             [$this->interest_name_1, $this->interest_name_2],
-            [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5]
+            [$this->interest_name_3, $this->interest_name_4, $this->interest_name_5],
+            ["🡸GoBack"]
         ];
 
         $reply_markup = Keyboard::make([
