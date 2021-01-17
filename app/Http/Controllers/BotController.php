@@ -115,38 +115,53 @@ class BotController extends Controller
                     $this->setToken();
                     break;
                 case'/SetGroup@FindYourCliqueBot':
+                case'/SetGroup':
                 case'SetGroup':
                     $this->setGroup();
                     break;
                 case'/Interests@FindYourCliqueBot':
+                case'/interests@FindYourCliqueBot':
+                case'/Interests':
+                case'/interests':
                 case'Interests':
+                case'interests':
                     $this->interests();
                     break;
                 case'/🡸GoBack@FindYourCliqueBot':
+                case'/🡸GoBack':
                 case'🡸GoBack':
                     $this->goBack();
                     break;
                 case'/Match@FindYourCliqueBot':
+                case'/match@FindYourCliqueBot':
+                case'/Match':
+                case'/match':
                 case'Match':
+                case'match':
                     $this->match();
                     break;
                 case '/'.$this->interest_name_1.'@FindYourCliqueBot':
+                case '/'.$this->interest_name_1:
                 case $this->interest_name_1:
                     $this->findMutualInterest1();
                     break;
                 case '/'.$this->interest_name_2.'@FindYourCliqueBot':
+                case '/'.$this->interest_name_2:
                 case $this->interest_name_2:
                     $this->findMutualInterest2();
                     break;
                 case '/'.$this->interest_name_3.'@FindYourCliqueBot':
+                case '/'.$this->interest_name_3:
                 case $this->interest_name_3:
                     $this->findMutualInterest3();
                     break;
                 case '/'.$this->interest_name_4.'@FindYourCliqueBot':
+                case '/'.$this->interest_name_4:
                 case $this->interest_name_4:
                     $this->findMutualInterest4();
                     break;
                 case '/'.$this->interest_name_5.'@FindYourCliqueBot':
+                case '/'.$this->interest_name_5:
                 case $this->interest_name_5:
                     $this->findMutualInterest5();
                     break;
@@ -281,7 +296,35 @@ class BotController extends Controller
     //Method for the "Next" input
     public function next() {
         if(isset($this->user_id)) {
+            if($user = User::where('chat_id', '=', $this->user_id)->get() == "[]") {
+                $message = "";
+                $message .= "<strong>Hmm... Seems like you haven't completed the steps in the private conversation with me yet.</strong>\n";
+
+                $keyboard = [
+                    ['Next']
+                ];
+                $reply_markup = Keyboard::make([
+                    'keyboard' => $keyboard,
+                    'resize_keyboard' => true,
+                    'one_time_keyboard' => true
+                ]);
+
+                $this->sendMessage($message, $reply_markup, true);
+
+                $this->start();
+                return;
+            }
             $this->goBack();
+            $user = User::where('chat_id', '=', $this->user_id)->get()[0];
+            //If in a group and user has a different group_id than the group he is trying to match in, update the group_id of the user to the chat_id of the group
+            if($user->group_id != $this->chat_id) {
+                try{
+                    $user->group_id = $this->chat_id;
+                    $user->save();
+                } catch(\Exception $e) {
+                    $this->sendMessage($message, null, true);
+                }
+            }
             return;
         }
 
@@ -353,9 +396,21 @@ class BotController extends Controller
         } else {
             if($user = User::where('chat_id', '=', $this->user_id)->get() == "[]") {
                 $message = "";
-                $message .= "<strong>You are not yet in our records, please type /start and follow the instructions.</strong>\n";
+                $message .= "<strong>Hmm... Seems like you haven't completed the steps in the private conversation with me yet.</strong>\n";
 
-                $this->sendMessage($message, null, true);
+                $keyboard = [
+                    ['Next']
+                ];
+                $reply_markup = Keyboard::make([
+                    'keyboard' => $keyboard,
+                    'resize_keyboard' => true,
+                    'one_time_keyboard' => true
+                ]);
+
+                $this->sendMessage($message, $reply_markup, true);
+
+                $this->start();
+                return;
             } else {
                 $user = User::where('chat_id', '=', $this->user_id)->get()[0];
 
@@ -364,12 +419,11 @@ class BotController extends Controller
                     $user->group_id = $this->chat_id;
                     $user->save();
 
-                    $message .= "<strong>Nice! Now I'll use this group to match </strong>\n";
+                    $message .= "<strong>Nice! Now I'll match you with users in this group.</strong>\n";
                 } catch(\Exception $e) {
                     $message .= "<strong>Something went wrong...</strong>\n";
-
-                    $this->sendMessage($message, null, true);
                 }
+                $this->sendMessage($message, null, true);
             }
         }
     }
@@ -377,9 +431,17 @@ class BotController extends Controller
     //Method for the "🡸GoBack" input
     public function goBack() {
         $message = "";
-        $message .= "Here you can access the bot features!\n";
-        $message .= "<strong>- Interests</strong> will tell you your interests and popup some buttons for you to find people you match with interest by interest!\n";
-        $message .= "<strong>- Match</strong> will give you all the users you matched with!\n";
+        $message .= "<strong>Here you can access the bot features!</strong>\n";
+        $message .= "\n";
+        if(isset($this->user_id)) {
+            $message .= "<strong>- <u>Interests</u></strong> will tell you your interests and popup some buttons for you to find users from this group with your same interests!\n";
+            $message .= "\n";
+            $message .= "<strong>- <u>Match</u></strong> will match you with users from this group based on your musical interests!\n";
+        } else {
+            $message .= "<strong>- <u>Interests</u></strong> will tell you your interests and popup some buttons for you to find users with your same interests!\n";
+            $message .= "\n";
+            $message .= "<strong>- <u>Match</u></strong> will match you with users based on your musical interests!\n";
+        }
 
         $keyboard = [
             ["Interests", "Match"]
@@ -401,9 +463,36 @@ class BotController extends Controller
 
         $response = json_decode($request);
 
+        if(isset($this->user_id)) {
+            if($user = User::where('chat_id', '=', $this->user_id)->get() == "[]") {
+                $message = "";
+                $message .= "<strong>Hmm... Seems like you haven't completed the steps in the private conversation with me yet.</strong>\n";
+
+                $keyboard = [
+                    ['Next']
+                ];
+                $reply_markup = Keyboard::make([
+                    'keyboard' => $keyboard,
+                    'resize_keyboard' => true,
+                    'one_time_keyboard' => true
+                ]);
+
+                $this->sendMessage($message, $reply_markup, true);
+
+                $this->start();
+                return;
+            }
+            $user = User::where('chat_id', '=', $this->user_id)->get()[0];
+        } else {
+            if($user = User::where('chat_id', '=', $this->chat_id)->get() == "[]") {
+                return;
+            }
+            $user = User::where('chat_id', '=', $this->chat_id)->get()[0];
+        }
+
         if(isset($response->items)) {
             $message = "";
-            $message .= "These are your interests:\n";
+            $message .= "These are your interests @".$this->username.":\n";
             $message .= "- ".$response->items[0]->name."\n";
             $message .= "- ".$response->items[1]->name."\n";
             $message .= "- ".$response->items[2]->name."\n";
@@ -424,17 +513,6 @@ class BotController extends Controller
                 'one_time_keyboard' => true
             ]);
 
-            if(isset($this->user_id)) {
-                if($user = User::where('chat_id', '=', $this->user_id)->get() == "[]") {
-                    return;
-                }
-                $user = User::where('chat_id', '=', $this->user_id)->get()[0];
-            } else {
-                if($user = User::where('chat_id', '=', $this->chat_id)->get() == "[]") {
-                    return;
-                }
-                $user = User::where('chat_id', '=', $this->chat_id)->get()[0];
-            }
             if($user->interests_set == 0) {
                 try{
                     $user->interests_set = 1;
@@ -451,7 +529,7 @@ class BotController extends Controller
                     $user->save();
 
                     $message .= "<strong>I've remembered your interests, nice!</strong>\n";
-                    $message .= "If you came from a <strong>group</strong>, you can now go back!\n";
+                    !isset($this->user_id) ? $message .= "If you came from a <strong>group</strong>, you can now go back!\n" : $message .= "";
 
                     try{
                         isset($this->user_id) ? $this->userDB = User::where('chat_id', '=', $this->user_id)->get()[0] : $this->userDB = User::where('chat_id', '=', $this->chat_id)->get()[0];
@@ -475,30 +553,56 @@ class BotController extends Controller
                 $this->sendMessage($message, $reply_markup, true);
             }
         } else {
-            $message = "";
-            $message .= "<strong>Something went wrong...</strong>\n";
-            $message .= "<strong>Your token has probably expired</strong>\n";
-            $message .= "Please, head out to this webpage and follow the instructions there.\n";
-            $message .= "findyourclique.pauabella.dev\n";
-            $message .= "Once you got your token, click <strong><i>Next</i></strong>\n";
+            if(isset($this->user_id)) {
+                $message = "";
+                $message .= "<strong>Something went wrong...</strong>\n";
+                $message .= "<strong>Your token has probably expired</strong>\n";
+                $this->sendMessage($message, null, true);
+                $this->start();
+            } else {
+                $message = "";
+                $message .= "<strong>Something went wrong...</strong>\n";
+                $message .= "<strong>Your token has probably expired</strong>\n";
+                $message .= "Please, head out to this webpage and follow the instructions there.\n";
+                $message .= "findyourclique.pauabella.dev\n";
+                $message .= "Once you got your token, click <strong><i>Next</i></strong>\n";
 
-            $keyboard = [
-                ['Next']
-            ];
+                $keyboard = [
+                    ['Next']
+                ];
 
-            $reply_markup = Keyboard::make([
-                'keyboard' => $keyboard,
-                'resize_keyboard' => true,
-                'one_time_keyboard' => true
-            ]);
+                $reply_markup = Keyboard::make([
+                    'keyboard' => $keyboard,
+                    'resize_keyboard' => true,
+                    'one_time_keyboard' => true
+                ]);
 
-            isset($this->user_id) ? $this->sendMessage($message, $reply_markup, true, $this->user_id) : $this->sendMessage($message, $reply_markup, true);
+                $this->sendMessage($message, $reply_markup, true);
+            }
         }
     }
 
     public function match() {
         //If in a group and user has a different group_id than the group he is trying to match in, update the group_id of the user to the chat_id of the group
         if(isset($this->user_id)) {
+            if($user = User::where('chat_id', '=', $this->user_id)->get() == "[]") {
+                $message = "";
+                $message .= "<strong>Hmm... Seems like you haven't completed the steps in the private conversation with me yet.</strong>\n";
+
+                $keyboard = [
+                    ['Next']
+                ];
+                $reply_markup = Keyboard::make([
+                    'keyboard' => $keyboard,
+                    'resize_keyboard' => true,
+                    'one_time_keyboard' => true
+                ]);
+
+                $this->sendMessage($message, $reply_markup, true);
+
+                $this->start();
+                return;
+            }
             $user = User::where('chat_id', '=', $this->user_id)->get()[0];
 
             if($user->group_id != $this->chat_id) {
@@ -539,7 +643,7 @@ class BotController extends Controller
 
         //100% message construction
         if($find100 != "[]") {
-            $message .= "<strong>Wow look, these users have your exact same interests!</strong>\n";
+            $message .= "<strong>Wow look @".$this->username.", these users have your exact same interests!</strong>\n";
             foreach ($find100 as $mutual) {
                 $message .= "- @".$mutual->username."\n";
             }
@@ -560,7 +664,7 @@ class BotController extends Controller
                 $message .= "- @".$mutual->username."\n";
             }
         } else if($find100 == "[]" && $find80 != "[]") {
-            $message .= "<strong>Found some users you highly match with (80%)!</strong>\n";
+            $message .= "<strong>@".$this->username." found some users you highly match with (80%)!</strong>\n";
             foreach ($find80 as $mutual) {
                 $message .= "- @".$mutual->username."\n";
             }
@@ -586,7 +690,7 @@ class BotController extends Controller
                 $message .= "- @".$mutual->username."\n";
             }
         } else if($find100 == "[]" && $find80 == "[]" && $find60 != "[]") {
-            $message .= "<strong>Found some users you certainly match with (60%)!</strong>\n";
+            $message .= "<strong>@".$this->username." found some users you certainly match with (60%)!</strong>\n";
             foreach ($find60 as $mutual) {
                 $message .= "- @".$mutual->username."\n";
             }
@@ -607,10 +711,10 @@ class BotController extends Controller
 
     //Method for the 100% match
     public function find100() {
+        if($user = User::where('chat_id', '=', $this->user_id)->get() == "[]") {
+            return;
+        }
         if(isset($this->user_id)) {
-            if($user = User::where('chat_id', '=', $this->user_id)->get() == "[]") {
-                return;
-            }
             $user = User::where('chat_id', '=', $this->user_id)->get()[0];
             //If in a group and user has a different group_id than the group he is trying to match in, update the group_id of the user to the chat_id of the group
             if($user->group_id != $this->chat_id) {
@@ -1465,6 +1569,18 @@ class BotController extends Controller
             $message .= "- The bot will send you a private message\n";
             $message .= "- Follow the instructions given\n";
             $message .= "- Come back when you finished the setup process\n";
+            $message .= "\n";
+            $message .= "<strong>Groups</strong>\n";
+            $message .= "Yep, FindYourClique works inside groups!\n";
+            $message .= "Once you have followed the 5 simple steps, the bot will match you between the people you are in the group with.\n";
+            $message .= "Discover who you have musical interests in common with in any group!\n";
+            $message .= "\n";
+            $message .= "<strong>Commands</strong>\n";
+            $message .= "/start - This is the first command that will start it all!\n";
+            $message .= "/Interests - This command will tell you your interests and you will be able to find users from this group with your same interests!\n";
+            $message .= "/Match - This command will match you with users from the same group based on your musical interests!\n";
+            $message .= "/help - Confused? Use this to get some help!\n";
+            $message .= "/delete - Wanna go? :( Use this to delete your user from out records.\n";
         } else {
             $message .= "<strong>How to use it in 5 simple steps</strong>\n";
             $message .= "- Type /start.\n";
@@ -1472,13 +1588,12 @@ class BotController extends Controller
             $message .= "- Go there, login with your Spotify account and come back with the token given copied.\n";
             $message .= "- Send the token to the bot the way it will tell you to.\n";
             $message .= "- That's it! Now you can play with the Interests and Match features yourself.\n";
+            $message .= "\n";
+            $message .= "<strong>What about groups?</strong>\n";
+            $message .= "Yep, FindYourClique also works inside groups!\n";
+            $message .= "Once you have followed the 5 simple steps, the bot will behave in groups the same way it does here but matching you between the people you are in the group with.\n";
+            $message .= "Discover who you have musical interests in common with in any group!\n";
         }
-
-        $message .= "\n";
-        $message .= "<strong>What about groups?</strong>\n";
-        $message .= "Yep, FindYourClique also works inside groups!\n";
-        $message .= "Once you have followed the 5 simple steps, the bot will behave in groups the same way it does here but matching you between the people you are in the group with.\n";
-        $message .= "Discover who you have musical interests in common with in any group!\n";
 
         if(isset($this->user_id)) {
             $message .= "\n";
@@ -1690,7 +1805,7 @@ class BotController extends Controller
     }
 
     public function setWebhook() {
-        $response = Telegram::setWebhook(['url' => 'https://76c1573da0f9.ngrok.io/api/webhook']);
+        $response = Telegram::setWebhook(['url' => 'https://466011d10f2d.ngrok.io/api/webhook']);
         dd($response);
     }
 
