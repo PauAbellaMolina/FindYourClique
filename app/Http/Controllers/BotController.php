@@ -36,184 +36,135 @@ class BotController extends Controller
         }
 
         if($request['message']['chat']['type'] == "group") {
-            // $this->handleRequestGroup($request);
             $this->user_id = $request['message']['from']['id'];
         }
-        //  else {
 
-            $this->chat_id = $request['message']['chat']['id'];
-            isset($request['message']['from']['first_name']) ?  $this->first_name = $request['message']['from']['first_name'] : $this->first_name = "";
-            isset($request['message']['from']['last_name']) ? $this->last_name = $request['message']['from']['last_name'] : $this->last_name = "";
-            $this->text = $request['message']['text'];
+        $this->chat_id = $request['message']['chat']['id'];
+        isset($request['message']['from']['first_name']) ?  $this->first_name = $request['message']['from']['first_name'] : $this->first_name = "";
+        isset($request['message']['from']['last_name']) ? $this->last_name = $request['message']['from']['last_name'] : $this->last_name = "";
+        $this->text = $request['message']['text'];
 
-            //Username control check
-            if(!isset($request['message']['from']['username'])) {
-                $this->sendMessage("You need to have a <i><strong>username</strong></i> to use FindYourClique.\nCome back once you set one on your Telegram profile!", null, true);
-                return;
-            }
+        //Username control check
+        if(!isset($request['message']['from']['username'])) {
+            $this->sendMessage("You need to have a <i><strong>username</strong></i> to use FindYourClique.\nCome back once you set one on your Telegram profile!", null, true);
+            return;
+        }
 
-            $this->username = $request['message']['from']['username'];
+        $this->username = $request['message']['from']['username'];
 
-            if(isset($this->user_id)) {
-                if(User::where('chat_id', '=', $this->user_id)->get() == "[]") {
-                    $this->userDB = null;
-                } else {
-                    try{
-                        $this->userDB = User::where('chat_id', '=', $this->user_id)->get()[0];
-                        $this->interest_name_1 = $this->userDB->interest_name_1;
-                        $this->interest_name_2 = $this->userDB->interest_name_2;
-                        $this->interest_name_3 = $this->userDB->interest_name_3;
-                        $this->interest_name_4 = $this->userDB->interest_name_4;
-                        $this->interest_name_5 = $this->userDB->interest_name_5;
-                        $this->spotifyToken = $this->userDB->spotify_api_token;
-                    } catch(\Exception $e) {
-                    }
-                }
+        if(isset($this->user_id)) {
+            if(User::where('chat_id', '=', $this->user_id)->get() == "[]") {
+                $this->userDB = null;
             } else {
-                if(User::where('chat_id', '=', $this->chat_id)->get() == "[]") {
-                    $this->userDB = null;
-                } else {
-                    try{
-                        $this->userDB = User::where('chat_id', '=', $this->chat_id)->get()[0];
-                        $this->interest_name_1 = $this->userDB->interest_name_1;
-                        $this->interest_name_2 = $this->userDB->interest_name_2;
-                        $this->interest_name_3 = $this->userDB->interest_name_3;
-                        $this->interest_name_4 = $this->userDB->interest_name_4;
-                        $this->interest_name_5 = $this->userDB->interest_name_5;
-                        $this->spotifyToken = $this->userDB->spotify_api_token;
-                    } catch(\Exception $e) {
-                    }
+                try{
+                    $this->userDB = User::where('chat_id', '=', $this->user_id)->get()[0];
+                    $this->interest_name_1 = $this->userDB->interest_name_1;
+                    $this->interest_name_2 = $this->userDB->interest_name_2;
+                    $this->interest_name_3 = $this->userDB->interest_name_3;
+                    $this->interest_name_4 = $this->userDB->interest_name_4;
+                    $this->interest_name_5 = $this->userDB->interest_name_5;
+                    $this->spotifyToken = $this->userDB->spotify_api_token;
+                } catch(\Exception $e) {
                 }
             }
-
-            $instruction = explode(' ',$this->text);
-
-            if(preg_match('/Token: */', $this->text)) {
-                $this->spotifyToken = count($instruction)>1 ? $instruction[1] : "";
-                $this->text = $instruction[0];
+        } else {
+            if(User::where('chat_id', '=', $this->chat_id)->get() == "[]") {
+                $this->userDB = null;
+            } else {
+                try{
+                    $this->userDB = User::where('chat_id', '=', $this->chat_id)->get()[0];
+                    $this->interest_name_1 = $this->userDB->interest_name_1;
+                    $this->interest_name_2 = $this->userDB->interest_name_2;
+                    $this->interest_name_3 = $this->userDB->interest_name_3;
+                    $this->interest_name_4 = $this->userDB->interest_name_4;
+                    $this->interest_name_5 = $this->userDB->interest_name_5;
+                    $this->spotifyToken = $this->userDB->spotify_api_token;
+                } catch(\Exception $e) {
+                }
             }
-            // $cmd = $instruction[0];
-            // $arg = count($instruction)>1?$instruction[1]:"";
+        }
 
-            switch($this->text) {
-                case'/start@FindYourCliqueBot':
-                case'/start':
-                    $this->start();
-                    break;
-                case'/delete@FindYourCliqueBot':
-                case'/delete':
-                    $this->delete();
-                    break;
-                case'/help@FindYourCliqueBot':
-                case'/help':
-                    $this->help();
-                    break;
-                case'Next':
-                    $this->next();
-                    break;
-                case'Token:':
-                    $this->setToken();
-                    break;
-                case'/SetGroup@FindYourCliqueBot':
-                case'/SetGroup':
-                case'SetGroup':
-                    $this->setGroup();
-                    break;
-                case'/Interests@FindYourCliqueBot':
-                case'/interests@FindYourCliqueBot':
-                case'/Interests':
-                case'/interests':
-                case'Interests':
-                case'interests':
-                    $this->interests();
-                    break;
-                case'/🡸GoBack@FindYourCliqueBot':
-                case'/🡸GoBack':
-                case'🡸GoBack':
-                    $this->goBack();
-                    break;
-                case'/Match@FindYourCliqueBot':
-                case'/match@FindYourCliqueBot':
-                case'/Match':
-                case'/match':
-                case'Match':
-                case'match':
-                    $this->match();
-                    break;
-                case '/'.$this->interest_name_1.'@FindYourCliqueBot':
-                case '/'.$this->interest_name_1:
-                case $this->interest_name_1:
-                    $this->findMutualInterest1();
-                    break;
-                case '/'.$this->interest_name_2.'@FindYourCliqueBot':
-                case '/'.$this->interest_name_2:
-                case $this->interest_name_2:
-                    $this->findMutualInterest2();
-                    break;
-                case '/'.$this->interest_name_3.'@FindYourCliqueBot':
-                case '/'.$this->interest_name_3:
-                case $this->interest_name_3:
-                    $this->findMutualInterest3();
-                    break;
-                case '/'.$this->interest_name_4.'@FindYourCliqueBot':
-                case '/'.$this->interest_name_4:
-                case $this->interest_name_4:
-                    $this->findMutualInterest4();
-                    break;
-                case '/'.$this->interest_name_5.'@FindYourCliqueBot':
-                case '/'.$this->interest_name_5:
-                case $this->interest_name_5:
-                    $this->findMutualInterest5();
-                    break;
-                default:
-                    break;
-            }
-        // }
+        $instruction = explode(' ',$this->text);
+
+        if(preg_match('/Token: */', $this->text)) {
+            $this->spotifyToken = count($instruction)>1 ? $instruction[1] : "";
+            $this->text = $instruction[0];
+        }
+
+        switch($this->text) {
+            case'/start@FindYourCliqueBot':
+            case'/start':
+                $this->start();
+                break;
+            case'/delete@FindYourCliqueBot':
+            case'/delete':
+                $this->delete();
+                break;
+            case'/help@FindYourCliqueBot':
+            case'/help':
+                $this->help();
+                break;
+            case'Next':
+                $this->next();
+                break;
+            case'Token:':
+                $this->setToken();
+                break;
+            case'/SetGroup@FindYourCliqueBot':
+            case'/SetGroup':
+            case'SetGroup':
+                $this->setGroup();
+                break;
+            case'/Interests@FindYourCliqueBot':
+            case'/interests@FindYourCliqueBot':
+            case'/Interests':
+            case'/interests':
+            case'Interests':
+            case'interests':
+                $this->interests();
+                break;
+            case'/🡸GoBack@FindYourCliqueBot':
+            case'/🡸GoBack':
+            case'🡸GoBack':
+                $this->goBack();
+                break;
+            case'/Match@FindYourCliqueBot':
+            case'/match@FindYourCliqueBot':
+            case'/Match':
+            case'/match':
+            case'Match':
+            case'match':
+                $this->match();
+                break;
+            case '/'.$this->interest_name_1.'@FindYourCliqueBot':
+            case '/'.$this->interest_name_1:
+            case $this->interest_name_1:
+                $this->findMutualInterest1();
+                break;
+            case '/'.$this->interest_name_2.'@FindYourCliqueBot':
+            case '/'.$this->interest_name_2:
+            case $this->interest_name_2:
+                $this->findMutualInterest2();
+                break;
+            case '/'.$this->interest_name_3.'@FindYourCliqueBot':
+            case '/'.$this->interest_name_3:
+            case $this->interest_name_3:
+                $this->findMutualInterest3();
+                break;
+            case '/'.$this->interest_name_4.'@FindYourCliqueBot':
+            case '/'.$this->interest_name_4:
+            case $this->interest_name_4:
+                $this->findMutualInterest4();
+                break;
+            case '/'.$this->interest_name_5.'@FindYourCliqueBot':
+            case '/'.$this->interest_name_5:
+            case $this->interest_name_5:
+                $this->findMutualInterest5();
+                break;
+            default:
+                break;
+        }
     }
-
-    //WIP groups
-    // public function handleRequestGroup(Request $request) {
-    //     $this->chat_id = $request['message']['chat']['id'];
-    //     $this->user_id = $request['message']['from']['id'];
-    //     isset($request['message']['from']['first_name']) ?  $this->first_name = $request['message']['from']['first_name'] : $this->first_name = "";
-    //     isset($request['message']['from']['last_name']) ? $this->last_name = $request['message']['from']['last_name'] : $this->last_name = "";
-    //     $this->text = $request['message']['text'];
-
-    //     //Username control check
-    //     if(!isset($request['message']['from']['username'])) {
-    //         $this->sendMessage("You need to have a <i><strong>username</strong></i> to use FindYourClique.\nCome back once you set one on your Telegram profile!", null, true);
-    //         return;
-    //     }
-
-    //     $this->username = $request['message']['from']['username'];
-
-    //     if(User::where('chat_id', '=', $this->user_id)->get() == "[]") {
-    //         $this->userDB = null;
-    //     } else {
-    //         try{
-    //             $this->userDB = User::where('chat_id', '=', $this->user_id)->get()[0];
-    //             $this->interest_name_1 = $this->userDB->interest_name_1;
-    //             $this->interest_name_2 = $this->userDB->interest_name_2;
-    //             $this->interest_name_3 = $this->userDB->interest_name_3;
-    //             $this->interest_name_4 = $this->userDB->interest_name_4;
-    //             $this->interest_name_5 = $this->userDB->interest_name_5;
-    //             $this->spotifyToken = $this->userDB->spotify_api_token;
-    //         } catch(\Exception $e) {
-    //         }
-    //     }
-
-    //     $message = "";
-    //     $message .= $this->username."\n";
-    //     $message .= $this->first_name."\n";
-    //     $message .= $this->last_name."\n";
-    //     $message .= $this->interest_name_1."\n";
-    //     $message .= $this->interest_name_2."\n";
-    //     $message .= $this->interest_name_3."\n";
-    //     $message .= $this->interest_name_4."\n";
-    //     $message .= $this->interest_name_5."\n";
-
-    //     $this->sendMessage($message, null, false, $this->user_id);
-    // }
 
   //--------------------------------------------------------------------------//
  //-------------------------------METHODS-----------------------------------//
@@ -1612,180 +1563,6 @@ class BotController extends Controller
  //-------------------------------Static Stuff------------------------------//
 //------------------------------------------------------------------------//
 
-
-    //Method for the "Interests" input
-    public function interestsDebug() {
-        $user = User::where('chat_id', '=', '450828960')->get()[0];
-        $aux1 = User::where('chat_id', '!=', '450828960')
-        ->where(function($query) use ($user) {
-            $query->where(function($query) use ($user) {
-                $query->orWhere('interest_code_1', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_2', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_3', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_4', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_5);
-            });
-        })->get();
-
-        $aux2 = User::where('chat_id', '!=', '450828960')
-        ->where(function($query) use ($user) {
-            $query->where(function($query) use ($user) {
-                $query->orWhere('interest_code_1', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_2', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_3', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_5', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_5);
-            });
-        })->get();
-
-        $aux3 = User::where('chat_id', '!=', '450828960')
-        ->where(function($query) use ($user) {
-            $query->where(function($query) use ($user) {
-                $query->orWhere('interest_code_1', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_2', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_4', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_5', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_5);
-            });
-        })->get();
-
-        $aux4 = User::where('chat_id', '!=', '450828960')
-        ->where(function($query) use ($user) {
-            $query->where(function($query) use ($user) {
-                $query->orWhere('interest_code_1', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_1', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_3', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_4', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_5', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_5);
-            });
-        })->get();
-
-        $aux5 = User::where('chat_id', '!=', '450828960')
-        ->where(function($query) use ($user) {
-            $query->where(function($query) use ($user) {
-                $query->orWhere('interest_code_2', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_2', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_3', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_3', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_4', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_4', '=', $user->interest_code_5);
-            })
-            ->where(function($query) use ($user) {
-                $query->orWhere('interest_code_5', '=', $user->interest_code_1)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_2)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_3)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_4)
-                    ->orWhere('interest_code_5', '=', $user->interest_code_5);
-            });
-        })->get();
-
-        $mutuals = new \Illuminate\Database\Eloquent\Collection;
-        $mutuals = $mutuals->merge($aux1);
-        $mutuals = $mutuals->merge($aux2);
-        $mutuals = $mutuals->merge($aux3);
-        $mutuals = $mutuals->merge($aux4);
-        $mutuals = $mutuals->merge($aux5);
-
-        dd($mutuals);
-    }
-
     //Universal send message function
     public function sendMessage($message, $reply_markup = null, $parse_html = false, $chat_id = null) {
 
@@ -1805,7 +1582,7 @@ class BotController extends Controller
     }
 
     public function setWebhook() {
-        $response = Telegram::setWebhook(['url' => 'https://466011d10f2d.ngrok.io/api/webhook']);
+        $response = Telegram::setWebhook(['url' => 'https://pauabella.dev/FindYourClique/api/webhook']);
         dd($response);
     }
 
