@@ -10,3 +10,7 @@ I solved this by creating [this](https://findyourclique.pauabella.dev "Take a lo
 
 Telegram Bot-> https://t.me/FindYourCliqueBot  
 Vue Spotify API Token Retriever -> https://findyourclique.pauabella.dev
+
+Usage example:
+
+![image](https://github.com/PauAbellaMolina/FindYourClique/assets/62839680/b5164776-45a8-40c0-9553-a913ccfccb39)
